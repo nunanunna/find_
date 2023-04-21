@@ -31,14 +31,16 @@ void PrintVolumeInfo(VolInfo* volume_info, char* cwd);
 unsigned long long int GetVolumeSize(char* cwd);
 void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info);
 void PrintDirSize(char* cwd, DirInfo* dir_info);
+bool WildMatch(char *wildcard_str, char *filename_str);
 
 
 int main(int argc, char *argv[])
 {
+    printf("%s\n", argv[1]);
     setlocale(LC_NUMERIC, "");
 
     char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
-    char *file_name = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);;
+    char *arg_file = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
     getcwd(cwd, MAX_DIRECTORY_LENGTH);
 
     char backslash[] = "\\";
@@ -50,26 +52,24 @@ int main(int argc, char *argv[])
     VolInfo volume_info;
     DirInfo dir_info = {0, };
 
-    int dir_count = 0;
-    int file_count = 0;
-    long total_file_size = 0;
-
     GetVolumeInfo(&volume_info, cwd);
     PrintVolumeInfo(&volume_info, cwd);
 
     file_dir = opendir(cwd);
 
     if (argc != 1) {
-        strcpy(file_name, argv[1]);
-        strcat(cwd, "\\");
-        strcat(cwd, file_name);
+        strcpy(arg_file, argv[1]);
+        printf("%s\n", arg_file);
 
-        if (access(cwd, F_OK) == 0){
-            getcwd(cwd, MAX_DIRECTORY_LENGTH);            
-            PrintDirItems(file_name, file_dir, cwd, &file_status, &dir_info);
-
+        while ((file = readdir(file_dir)) != NULL) {  
+            // printf("%s\n%s\n", file->d_name, arg_file);
+            if(WildMatch(arg_file, file->d_name)){
+                PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
+                printf("들어감\n");
+            }
         }
-        else{
+
+        if(!dir_info.dir_count && !dir_info.file_count) {
             printf("파일을 찾을 수 없습니다.\n");
             return 0;
         }
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
     PrintDirSize(cwd, &dir_info);
 
     free(cwd);
-    free(file_name);
+    free(arg_file);
 
     closedir(file_dir);
     return 0;
@@ -174,4 +174,35 @@ unsigned long long int GetVolumeSize(char* cwd) {
 void PrintDirSize(char* cwd, DirInfo* dir_info) {
     printf("%'16d개 파일%'20d 바이트\n", dir_info->file_count, dir_info->total_file_size);
     printf("%'16d개 디렉터리%'17llu 바이트 남음\n", dir_info->dir_count, GetVolumeSize(cwd));
+}
+
+bool WildMatch(char *wildcard_str, char *filename_str) {
+    int i = 0;
+    int j = 0;
+    int wildcard_pos = -1;
+    int filename_pos = -1;
+    int wildcard_len = strlen(wildcard_str);
+    int filename_len = strlen(filename_str);
+
+    while (i < filename_len) {
+        if (j < wildcard_len && (wildcard_str[j] == '?' || wildcard_str[j] == filename_str[i])) {
+            i++;
+            j++;
+        } else if (j < wildcard_len && wildcard_str[j] == '*') {
+            wildcard_pos = j;
+            filename_pos = i;
+            j++;
+        } else if (wildcard_pos != -1) {
+            j = wildcard_pos + 1;
+            i = ++filename_pos;
+        } else {
+            return 0;
+        }
+    }
+
+    while (j < wildcard_len && wildcard_str[j] == '*') {
+        j++;
+    }
+
+    return j == wildcard_len ? true : false;
 }
