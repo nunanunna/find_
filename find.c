@@ -25,7 +25,7 @@ typedef struct DirectoryInfo {
     long total_file_size;
 } DirInfo;
 
-void GetVolumeInfo(VolInfo* volume_info, char* cwd);
+void GetVolumeInfo(VolInfo* volume_info, char* cwd); 
 void PrintDirData(char* file_name, struct stat *stat_data);
 void PrintVolumeInfo(VolInfo* volume_info, char* cwd);
 unsigned long long int GetVolumeSize(char* cwd);
@@ -34,16 +34,12 @@ void PrintDirSize(char* cwd, DirInfo* dir_info);
 bool WildMatch(char *wildcard_str, char *filename_str);
 
 
-int main(int argc, char *argv[])
-{
-    printf("%s\n", argv[1]);
+int main(int argc, char *argv[]) {
     setlocale(LC_NUMERIC, "");
 
-    char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
-    char *arg_file = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
-    getcwd(cwd, MAX_DIRECTORY_LENGTH);
-
-    char backslash[] = "\\";
+    char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH); // 현재 경로 저장 변수
+    char *arg_file = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH); // argv 저장 변수
+    getcwd(cwd, MAX_DIRECTORY_LENGTH); // 현재경로 읽어오기
 
     struct stat file_status;
     DIR *file_dir = NULL;
@@ -52,6 +48,7 @@ int main(int argc, char *argv[])
     VolInfo volume_info;
     DirInfo dir_info = {0, };
 
+    // 볼륨 정보 읽어와서 출력
     GetVolumeInfo(&volume_info, cwd);
     PrintVolumeInfo(&volume_info, cwd);
 
@@ -59,14 +56,10 @@ int main(int argc, char *argv[])
 
     if (argc != 1) {
         strcpy(arg_file, argv[1]);
-        printf("%s\n", arg_file);
 
         while ((file = readdir(file_dir)) != NULL) {  
-            // printf("%s\n%s\n", file->d_name, arg_file);
-            if(WildMatch(arg_file, file->d_name)){
+            if(WildMatch(arg_file, file->d_name))
                 PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
-                printf("들어감\n");
-            }
         }
 
         if(!dir_info.dir_count && !dir_info.file_count) {
@@ -94,16 +87,16 @@ void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_
     strcat(cwd, "\\");
     strcat(cwd, file_name); //현재 경로 문자열로 파일 경로 생성
 
-    stat(cwd, file_status);
-    PrintDirData(file_name, file_status);
-    getcwd(cwd, MAX_DIRECTORY_LENGTH);
+    stat(cwd, file_status); // 파일 stat 읽기
+    PrintDirData(file_name, file_status); // 날짜/시간/디렉토리 여부 출력
+    getcwd(cwd, MAX_DIRECTORY_LENGTH); // 다시 실행한 경로로 덮어쓰기
 
-    if(S_ISDIR(file_status->st_mode))
+    if(S_ISDIR(file_status->st_mode)) // 디렉토리면 dir_count++
         dir_info->dir_count++;
-    if(S_ISREG(file_status->st_mode))
+    if(S_ISREG(file_status->st_mode)) // 파일이면 file_count++
         dir_info->file_count++;
 
-    dir_info->total_file_size += file_status->st_size;
+    dir_info->total_file_size += file_status->st_size; // 디렉토리 파일 크기 변수에 현재 파일 크기 더함
 }
 
 
@@ -112,7 +105,6 @@ void PrintDirData(char* file_name, struct stat *stat_data)
     // 날짜/시간 출력
     struct tm* t = localtime(&stat_data->st_atime);
     
-
     printf("%d-%02d-%02d  ", t->tm_year+1900, t->tm_mon+1, t->tm_mday);
     if(t->tm_hour == 12)
         printf("오후 %02d:%02d    ", 12, t->tm_min);
@@ -131,7 +123,7 @@ void PrintDirData(char* file_name, struct stat *stat_data)
 }
 
 void GetVolumeInfo(VolInfo* volume_info, char* cwd) {
-    
+    // 볼륨 시리얼 입력받아서 8진수로 변환 후 저장
     char rootPath[] = {cwd[0], cwd[1], cwd[2]}; 
     DWORD vol_serial; 
     DWORD max_comp_len; 
@@ -157,16 +149,18 @@ void PrintVolumeInfo(VolInfo* volume_info, char* cwd) {
     else
         printf(" %c 드라이브의 볼륨: %s\n", cwd[0], volume_info->volume_name);
     
-    printf(" 볼륨 일련 번호: %c%c%c%c-%c%c%c%c\n\n", 
-    volume_info->volume_serial[0], volume_info->volume_serial[1], volume_info->volume_serial[2], volume_info->volume_serial[3],
-    volume_info->volume_serial[4], volume_info->volume_serial[5], volume_info->volume_serial[6], volume_info->volume_serial[7]);
+    printf(" 볼륨 일련 번호: ");
+    for(int i=0; i<8; i++) {
+        printf("%c", volume_info->volume_serial[i]);
+        if(i==3) printf("-");
+    }
 
-    printf(" %s 디렉터리\n\n", cwd);
+    printf("\n\n %s 디렉터리\n\n", cwd);
 }
 
 unsigned long long int GetVolumeSize(char* cwd) {
     ULARGE_INTEGER total, free;
-    GetDiskFreeSpaceEx("C:\\", NULL, &total, &free);// C드라이브의 정보를 얻음
+    GetDiskFreeSpaceEx("C:\\", NULL, &total, &free);// C드라이브의 남은 공간 정보를 얻음
 
     return free.QuadPart;
 }
@@ -184,6 +178,12 @@ bool WildMatch(char *wildcard_str, char *filename_str) {
     int wildcard_len = strlen(wildcard_str);
     int filename_len = strlen(filename_str);
 
+    // 와일드카드 문자가 '?'거나 파일이름과 일치하면 i, j ++
+    // 다르다면 '*'인지 여부를 확인하고 wildcard_pos와 filename_pos에 현재 문자 위치를 저장해두고 j++
+    // 다음 wildcard_str[j]가 일치하지 않으면 저장해두었던 위치로 돌아가서 일치할때까지 i++
+
+    // 하나도 일치하지 않으면 false 반환, 마지막 문자가 *라면 그만큼 j++
+    // j == wildcard_len이라면 모두 일치니까 true 반환, 아니면 false 
     while (i < filename_len) {
         if (j < wildcard_len && (wildcard_str[j] == '?' || wildcard_str[j] == filename_str[i])) {
             i++;
@@ -196,7 +196,7 @@ bool WildMatch(char *wildcard_str, char *filename_str) {
             j = wildcard_pos + 1;
             i = ++filename_pos;
         } else {
-            return 0;
+            return false;
         }
     }
 
