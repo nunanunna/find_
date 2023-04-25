@@ -9,6 +9,7 @@
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
+                "-Iinclude",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],
