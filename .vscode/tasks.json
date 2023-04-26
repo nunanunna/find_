@@ -10,6 +10,7 @@
                 "-g",
                 "${file}",
                 "-Iinclude",
+                "CRT_noglob.o",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],
