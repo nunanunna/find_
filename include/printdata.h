@@ -51,3 +51,6 @@ void PrintDirSize(char* cwd, DirInfo* dir_info) {
     printf("%'16d개 디렉터리%'17llu 바이트 남음\n", dir_info->dir_count, GetVolumeSize(cwd));
 }
 
+void PrintFileNotFoundError() {
+    printf("파일을 찾을 수 없습니다.\n");
+}

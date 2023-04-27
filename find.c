@@ -8,16 +8,22 @@
 
 enum{
     MAX_DIRECTORY_LENGTH = 1024,
+    FILE_NAME = 1,
+    OPTION = 2,
+    CMD_ONLY = 1,
+    FILE_ENTERED = 2,
+    OPTION_ENTERED = 3
 };
 
 void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info);
+int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
+int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
 
 int main(int argc, char *argv[]) {
     setlocale(LC_NUMERIC, "");
 
     char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH); // 현재 경로 저장 변수
     char *arg_file = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH); // argv 저장 변수
-    strcpy(arg_file, argv[1]);
     getcwd(cwd, MAX_DIRECTORY_LENGTH); // 현재경로 읽어오기
 
     struct stat file_status;
@@ -34,22 +40,18 @@ int main(int argc, char *argv[]) {
     file_dir = opendir(cwd);
 
     switch(argc) {
-        case 1: 
+        case CMD_ONLY:
             while ((file = readdir(file_dir)) != NULL)
                 PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
             break;
 
-        case 2:
-            while ((file = readdir(file_dir)) != NULL) {  
-                if(WildMatch(arg_file, file->d_name))
-                    PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
-            }
-
-            if(!dir_info.dir_count && !dir_info.file_count) {
-                printf("파일을 찾을 수 없습니다.\n");
+        case FILE_ENTERED:
+            if(PrintDirExclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[FILE_NAME]) == -1) {
+                PrintFileNotFoundError();
                 return 0;
             }
-        case 3:
+            break;
+        case OPTION_ENTERED:
             break;
         default:
     }
@@ -74,4 +76,19 @@ void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_
         dir_info->file_count++;
 
     dir_info->total_file_size += file_status->st_size; // 디렉토리 파일 총합 크기 변수에 현재 파일 크기 더함
+}
+
+int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
+    return 0;
+}
+
+int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
+    while ((file = readdir(file_dir)) != NULL) {
+        if(WildMatch(arg_file, file->d_name))
+            PrintDirItems(file->d_name, file_dir, cwd, file_status, dir_info);
+    }
+    if(!dir_info->dir_count && !dir_info->file_count) {
+        return -1;
+    }
+    return 0;
 }
