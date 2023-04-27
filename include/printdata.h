@@ -31,11 +31,6 @@ void PrintDirData(char* file_name, struct stat *stat_data)
     printf("%s\n", file_name);
 }
 
-void PrintDirSize(char* cwd, DirInfo* dir_info) {
-    printf("%'16d개 파일%'20d 바이트\n", dir_info->file_count, dir_info->total_file_size);
-    printf("%'16d개 디렉터리%'17llu 바이트 남음\n", dir_info->dir_count, GetVolumeSize(cwd));
-}
-
 void PrintVolumeInfo(VolInfo* volume_info, char* cwd) {
     if(volume_info->volume_name == NULL)
         printf(" %c 드라이브의 볼륨에는 이름이 없습니다.\n", cwd[0]);
@@ -50,3 +45,9 @@ void PrintVolumeInfo(VolInfo* volume_info, char* cwd) {
 
     printf("\n\n %s 디렉터리\n\n", cwd);
 }
+
+void PrintDirSize(char* cwd, DirInfo* dir_info) {
+    printf("%'16d개 파일%'20d 바이트\n", dir_info->file_count, dir_info->total_file_size);
+    printf("%'16d개 디렉터리%'17llu 바이트 남음\n", dir_info->dir_count, GetVolumeSize(cwd));
+}
+
