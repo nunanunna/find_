@@ -42,7 +42,9 @@ void PrintVolumeInfo(VolInfo* volume_info, char* cwd) {
         printf("%c", volume_info->volume_serial[i]);
         if(i==3) printf("-");
     }
+}
 
+void PrintCwd(char* cwd) {
     printf("\n\n %s 디렉터리\n\n", cwd);
 }
 

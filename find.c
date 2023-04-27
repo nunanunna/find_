@@ -5,9 +5,11 @@
 #include "wildcard.h"
 #include "volume.h"
 #include "printdata.h"
+#include "queue.h"
 
 enum{
     MAX_DIRECTORY_LENGTH = 1024,
+    MAX_FILE_NAME_LENGTH = 260,
     FILE_NAME = 1,
     OPTION = 2,
     CMD_ONLY = 1,
@@ -41,17 +43,21 @@ int main(int argc, char *argv[]) {
 
     switch(argc) {
         case CMD_ONLY:
-            while ((file = readdir(file_dir)) != NULL)
+            while ((file = readdir(file_dir)) != NULL) {
+                PrintCwd(cwd);
                 PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
+            }
             break;
 
         case FILE_ENTERED:
-            if(PrintDirExclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[FILE_NAME]) == -1) {
+            PrintCwd(cwd);
+            if(PrintDirInclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[FILE_NAME]) == -1) {
                 PrintFileNotFoundError();
                 return 0;
             }
             break;
         case OPTION_ENTERED:
+            PrintDirExclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[OPTION]);
             break;
         default:
     }
@@ -79,6 +85,9 @@ void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_
 }
 
 int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
+    if(strcmp(arg_file, "-s")) {
+        
+    }
     return 0;
 }
 
@@ -86,7 +95,6 @@ int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* 
     while ((file = readdir(file_dir)) != NULL) {
         if(WildMatch(arg_file, file->d_name))
             PrintDirItems(file->d_name, file_dir, cwd, file_status, dir_info);
-    }
     if(!dir_info->dir_count && !dir_info->file_count) {
         return -1;
     }
