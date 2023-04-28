@@ -50,15 +50,15 @@ void enqueue(Queue *queue, char* cwd)
  
 char* dequeue(Queue *queue)
 {
-    char* cwd;
+    char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
     Node *ptr;
     if (isEmpty(queue))    //큐가 비었을 때
     {
 
-        return 0;
+        return NULL;
     }
     ptr = queue->front;    //맨 앞의 노드 ptr 설정 
-    char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
+
     strcpy(cwd, ptr->cwd);
     queue->front = ptr->next;    //맨 앞은 ptr의 다음 노드로 설정
     free(ptr);    // ptr 해제 
