@@ -8,7 +8,6 @@
 #include "queue.h"
 
 enum{
-    MAX_DIRECTORY_LENGTH = 1024,
     MAX_FILE_NAME_LENGTH = 260,
     FILE_NAME = 1,
     OPTION = 2,
@@ -122,7 +121,7 @@ int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_
             PrintDirItems(file->d_name, cwd, file_status, dir_info);
         }
     }
-    if(next_path = dequeue(queue) == 0) 
+    if((next_path = dequeue(queue)) == NULL) 
         return 0;
     if(!FindSubDir(file, file_dir, next_path, file_status, dir_info, arg_file, queue))
         return 0;
