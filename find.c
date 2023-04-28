@@ -43,21 +43,22 @@ int main(int argc, char *argv[]) {
 
     switch(argc) {
         case CMD_ONLY:
+            PrintCwd(cwd);
             while ((file = readdir(file_dir)) != NULL) {
-                PrintCwd(cwd);
+
                 PrintDirItems(file->d_name, cwd, &file_status, &dir_info);
             }
             break;
 
         case FILE_ENTERED:
             PrintCwd(cwd);
-            if(PrintDirInclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[FILE_NAME]) == -1) {
+            if(PrintDirExclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[FILE_NAME]) == -1) {
                 PrintFileNotFoundError();
                 return 0;
             }
             break;
         case OPTION_ENTERED:
-            PrintDirExclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[OPTION]);
+            PrintDirInclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[OPTION]);
             break;
         default:
     }
@@ -97,9 +98,9 @@ int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* 
     while ((file = readdir(file_dir)) != NULL) {
         if(WildMatch(arg_file, file->d_name))
             PrintDirItems(file->d_name, cwd, file_status, dir_info);
+    }
     if(!dir_info->dir_count && !dir_info->file_count)
         return -1;
-    }
     return 0;
 }
 
