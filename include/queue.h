@@ -1,4 +1,9 @@
 #include <stdlib.h>
+#include <string.h>
+
+enum {
+    MAX_DIRECTORY_LENGTH = 1024
+};
 
 typedef struct node 
 {
@@ -39,7 +44,7 @@ void enqueue(Queue *queue, char* cwd)
     {
         queue->rear->next = new_node;    //맨 뒤의 다음을 new_node로 설정
     }
-    queue->rear = new_node;    //맨 뒤를 newNode로 설정   
+    queue->rear = new_node;    //맨 뒤를 new_node로 설정   
     queue->node_count++;    //큐안의 노드 개수를 1 증가
 }
  
@@ -53,7 +58,8 @@ char* dequeue(Queue *queue)
         return 0;
     }
     ptr = queue->front;    //맨 앞의 노드 ptr 설정 
-    cwd = ptr->cwd;    // return 할 데이터  
+    char *cwd = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
+    strcpy(cwd, ptr->cwd);
     queue->front = ptr->next;    //맨 앞은 ptr의 다음 노드로 설정
     free(ptr);    // ptr 해제 
     queue->node_count--;    //큐의 노드 개수를 1 감소

@@ -17,9 +17,10 @@ enum{
     OPTION_ENTERED = 3
 };
 
-void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info);
+void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo* dir_info);
 int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
 int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
+int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file, Queue* queue);
 
 int main(int argc, char *argv[]) {
     setlocale(LC_NUMERIC, "");
@@ -45,7 +46,7 @@ int main(int argc, char *argv[]) {
         case CMD_ONLY:
             while ((file = readdir(file_dir)) != NULL) {
                 PrintCwd(cwd);
-                PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
+                PrintDirItems(file->d_name, cwd, &file_status, &dir_info);
             }
             break;
 
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
     closedir(file_dir);
 }
 
-void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info) {
+void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo* dir_info) {
     char path[MAX_DIRECTORY_LENGTH];
 
     snprintf(path, MAX_DIRECTORY_LENGTH, "%s\\%s", cwd, file_name); //파일 경로 생성
@@ -86,6 +87,8 @@ void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_
 
 int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
     if(strcmp(arg_file, "-s")) {
+        Queue queue;
+        initQueue(&queue);
         
     }
     return 0;
@@ -94,9 +97,33 @@ int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* 
 int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
     while ((file = readdir(file_dir)) != NULL) {
         if(WildMatch(arg_file, file->d_name))
-            PrintDirItems(file->d_name, file_dir, cwd, file_status, dir_info);
-    if(!dir_info->dir_count && !dir_info->file_count) {
+            PrintDirItems(file->d_name, cwd, file_status, dir_info);
+    if(!dir_info->dir_count && !dir_info->file_count)
         return -1;
     }
     return 0;
+}
+
+int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file, Queue* queue) {
+    char* next_path;
+    bool has_matched = false;
+    file_dir = opendir(cwd);
+    while((file = readdir(file_dir)) != NULL) {
+        if(S_ISDIR(file_status->st_mode)) {
+            char *dir_path = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
+            snprintf(dir_path, MAX_DIRECTORY_LENGTH, "%s\\%s", cwd, file->d_name);
+            enqueue(queue, dir_path);
+        }
+        if(WildMatch(arg_file, file->d_name)) {
+            if(!has_matched) {
+                PrintCwd(cwd);
+                has_matched = true;
+            }
+            PrintDirItems(file->d_name, cwd, file_status, dir_info);
+        }
+    }
+    if(next_path = dequeue(queue) == 0) 
+        return 0;
+    if(!FindSubDir(file, file_dir, next_path, file_status, dir_info, arg_file, queue))
+        return 0;
 }
