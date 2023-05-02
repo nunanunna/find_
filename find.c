@@ -88,7 +88,7 @@ void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo
 
 int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, int argc, char* argv[]) {
     if(!strcmp(argv[OPTION], "-s")) {
-        FindSubDir(file, file_dir, cwd, file_status, dir_info, argv[OPTION]);
+        FindSubDir(file, file_dir, cwd, file_status, dir_info, argv[FILE_NAME]);
     }
     return 0;
 }
