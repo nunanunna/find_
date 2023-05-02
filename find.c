@@ -108,16 +108,19 @@ int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_
     Queue queue;
     InitQueue(&queue);
     Enqueue(&queue, cwd);
+
     while(!IsEmpty(&queue)) {
-        strcpy(path, cwd);
         char* current = Dequeue(&queue);
+        strcpy(path, current);
         file_dir = opendir(path);
         
         while((file = readdir(file_dir)) != NULL) {
             snprintf(path, MAX_DIRECTORY_LENGTH, "%s\\%s", current, file->d_name); //파일 경로 생성
             stat(path, file_status); // 파일 stat 읽기
+            if(S_ISDIR(file_status->st_mode) && (strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0))
+                continue;
             if(S_ISDIR(file_status->st_mode))
-                Enqueue(&queue, file->d_name);
+                Enqueue(&queue, path);
             if(WildMatch(arg_file, file->d_name))
                 PrintDirItems(file->d_name, cwd, file_status, dir_info);
         }
