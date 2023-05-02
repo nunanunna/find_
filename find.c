@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <locale.h>
+#include <unistd.h>
 #include "wildcard.h"
 #include "volume.h"
 #include "printdata.h"
@@ -17,9 +18,9 @@ enum{
 };
 
 void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo* dir_info);
-int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
+int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, int argc, char* argv[]);
 int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
-int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file, Queue* queue);
+int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
 
 int main(int argc, char *argv[]) {
     setlocale(LC_NUMERIC, "");
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case OPTION_ENTERED:
-            PrintDirInclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[OPTION]);
+            PrintDirInclOpt(file, file_dir, cwd, &file_status, &dir_info, argc, argv);
             break;
         default:
     }
@@ -85,11 +86,9 @@ void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo
     dir_info->total_file_size += file_status->st_size; // 디렉토리 파일 총합 크기 변수에 현재 파일 크기 더함
 }
 
-int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
-    if(strcmp(arg_file, "-s")) {
-        Queue queue;
-        initQueue(&queue);
-        
+int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, int argc, char* argv[]) {
+    if(!strcmp(argv[OPTION], "-s")) {
+        FindSubDir(file, file_dir, cwd, file_status, dir_info, argv[OPTION]);
     }
     return 0;
 }
@@ -104,26 +103,25 @@ int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* 
     return 0;
 }
 
-int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file, Queue* queue) {
-    char* next_path;
-    bool has_matched = false;
-    file_dir = opendir(cwd);
-    while((file = readdir(file_dir)) != NULL) {
-        if(S_ISDIR(file_status->st_mode)) {
-            char *dir_path = (char *)malloc(sizeof(char) * MAX_DIRECTORY_LENGTH);
-            snprintf(dir_path, MAX_DIRECTORY_LENGTH, "%s\\%s", cwd, file->d_name);
-            enqueue(queue, dir_path);
+int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
+    char path[MAX_DIRECTORY_LENGTH];
+    Queue queue;
+    InitQueue(&queue);
+    Enqueue(&queue, cwd);
+    while(!IsEmpty(&queue)) {
+        strcpy(path, cwd);
+        char* current = Dequeue(&queue);
+        file_dir = opendir(path);
+        
+        while((file = readdir(file_dir)) != NULL) {
+            snprintf(path, MAX_DIRECTORY_LENGTH, "%s\\%s", current, file->d_name); //파일 경로 생성
+            stat(path, file_status); // 파일 stat 읽기
+            if(S_ISDIR(file_status->st_mode))
+                Enqueue(&queue, file->d_name);
+            if(WildMatch(arg_file, file->d_name))
+                PrintDirItems(file->d_name, cwd, file_status, dir_info);
         }
-        if(WildMatch(arg_file, file->d_name)) {
-            if(!has_matched) {
-                PrintCwd(cwd);
-                has_matched = true;
-            }
-            PrintDirItems(file->d_name, cwd, file_status, dir_info);
-        }
+
+        free(current);
     }
-    if((next_path = dequeue(queue)) == NULL) 
-        return 0;
-    if(!FindSubDir(file, file_dir, next_path, file_status, dir_info, arg_file, queue))
-        return 0;
 }
