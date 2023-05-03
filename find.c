@@ -2,15 +2,25 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <locale.h>
+#include <unistd.h>
 #include "wildcard.h"
 #include "volume.h"
 #include "printdata.h"
+#include "queue.h"
 
 enum{
-    MAX_DIRECTORY_LENGTH = 1024,
+    MAX_FILE_NAME_LENGTH = 260,
+    FILE_NAME = 1,
+    OPTION = 2,
+    CMD_ONLY = 1,
+    FILE_ENTERED = 2,
+    OPTION_ENTERED = 3
 };
 
-void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info);
+void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo* dir_info);
+int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, int argc, char* argv[]);
+int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
+int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file);
 
 int main(int argc, char *argv[]) {
     setlocale(LC_NUMERIC, "");
@@ -32,47 +42,97 @@ int main(int argc, char *argv[]) {
 
     file_dir = opendir(cwd);
 
-    if (argc != 1) {
-        strcpy(arg_file, argv[1]);
+    switch(argc) {
+        case CMD_ONLY:
+            PrintCwd(cwd);
+            while ((file = readdir(file_dir)) != NULL) {
 
-        while ((file = readdir(file_dir)) != NULL) {  
-            if(WildMatch(arg_file, file->d_name))
-                PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
-        }
+                PrintDirItems(file->d_name, cwd, &file_status, &dir_info);
+            }
+            break;
 
-        if(!dir_info.dir_count && !dir_info.file_count) {
-            printf("파일을 찾을 수 없습니다.\n");
-            return 0;
-        }
-    }
-
-    else if(argc == 1) {
-        while ((file = readdir(file_dir)) != NULL) {    
-            PrintDirItems(file->d_name, file_dir, cwd, &file_status, &dir_info);
-        }
+        case FILE_ENTERED:
+            PrintCwd(cwd);
+            if(PrintDirExclOpt(file, file_dir, cwd, &file_status, &dir_info, argv[FILE_NAME]) == -1) {
+                PrintFileNotFoundError();
+                return 0;
+            }
+            break;
+        case OPTION_ENTERED:
+            PrintDirInclOpt(file, file_dir, cwd, &file_status, &dir_info, argc, argv);
+            break;
+        default:
     }
 
     PrintDirSize(cwd, &dir_info);
 
     free(cwd);
     free(arg_file);
-
     closedir(file_dir);
-    return 0;
 }
 
-void PrintDirItems(char* file_name, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info) {
-    strcat(cwd, "\\");
-    strcat(cwd, file_name); //현재 경로 문자열로 파일 경로 생성
+void PrintDirItems(char* file_name, char* cwd, struct stat* file_status, DirInfo* dir_info) {
+    char path[MAX_DIRECTORY_LENGTH];
 
-    stat(cwd, file_status); // 파일 stat 읽기
+    snprintf(path, MAX_DIRECTORY_LENGTH, "%s\\%s", cwd, file_name); //파일 경로 생성
+    stat(path, file_status); // 파일 stat 읽기
     PrintDirData(file_name, file_status); // 날짜/시간/디렉토리 여부 출력
-    getcwd(cwd, MAX_DIRECTORY_LENGTH); // 다시 실행한 경로로 덮어쓰기
 
     if(S_ISDIR(file_status->st_mode)) // 디렉토리면 dir_count++
         dir_info->dir_count++;
-    if(S_ISREG(file_status->st_mode)) // 파일이면 file_count++
+    if(S_ISREG(file_status->st_mode))  // 파일이면 file_count++
         dir_info->file_count++;
 
-    dir_info->total_file_size += file_status->st_size; // 디렉토리 파일 크기 변수에 현재 파일 크기 더함
+    dir_info->total_file_size += file_status->st_size; // 디렉토리 파일 총합 크기 변수에 현재 파일 크기 더함
+}
+
+int PrintDirInclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, int argc, char* argv[]) {
+    if(!strcmp(argv[OPTION], "-s")) {
+        FindSubDir(file, file_dir, cwd, file_status, dir_info, argv[FILE_NAME]);
+    }
+    return 0;
+}
+
+int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
+    while ((file = readdir(file_dir)) != NULL) {
+        if(WildMatch(arg_file, file->d_name))
+            PrintDirItems(file->d_name, cwd, file_status, dir_info);
+    }
+    if(!dir_info->dir_count && !dir_info->file_count)
+        return -1;
+    return 0;
+}
+
+int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
+    char dir_path[MAX_DIRECTORY_LENGTH];
+    char file_path[MAX_DIRECTORY_LENGTH];
+    Queue queue;
+    bool file_matched = false;
+    InitQueue(&queue);
+    Enqueue(&queue, cwd);
+
+    while(!IsEmpty(&queue)) {
+        
+        char* current = Dequeue(&queue);
+        strcpy(dir_path, current);
+        file_dir = opendir(dir_path);
+        file_matched = false;
+        
+        while((file = readdir(file_dir)) != NULL) {
+            snprintf(file_path, MAX_DIRECTORY_LENGTH, "%s\\%s", current, file->d_name); //파일 경로 생성
+            stat(file_path, file_status); // 파일 stat 읽기
+            if(S_ISDIR(file_status->st_mode) && (strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0))
+                continue;
+            if(S_ISDIR(file_status->st_mode))
+                Enqueue(&queue, file_path);
+            if(WildMatch(arg_file, file->d_name)) {
+                if(!file_matched) {
+                    PrintCwd(dir_path);
+                    file_matched = true;
+                }
+                PrintDirItems(file->d_name, dir_path, file_status, dir_info);
+            }
+        }
+        free(current);
+    }
 }
