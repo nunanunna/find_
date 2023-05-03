@@ -104,27 +104,35 @@ int PrintDirExclOpt(struct dirent* file, DIR* file_dir, char* cwd, struct stat* 
 }
 
 int FindSubDir(struct dirent* file, DIR* file_dir, char* cwd, struct stat* file_status, DirInfo* dir_info, char* arg_file) {
-    char path[MAX_DIRECTORY_LENGTH];
+    char dir_path[MAX_DIRECTORY_LENGTH];
+    char file_path[MAX_DIRECTORY_LENGTH];
     Queue queue;
+    bool file_matched = false;
     InitQueue(&queue);
     Enqueue(&queue, cwd);
 
     while(!IsEmpty(&queue)) {
+        
         char* current = Dequeue(&queue);
-        strcpy(path, current);
-        file_dir = opendir(path);
+        strcpy(dir_path, current);
+        file_dir = opendir(dir_path);
+        file_matched = false;
         
         while((file = readdir(file_dir)) != NULL) {
-            snprintf(path, MAX_DIRECTORY_LENGTH, "%s\\%s", current, file->d_name); //파일 경로 생성
-            stat(path, file_status); // 파일 stat 읽기
+            snprintf(file_path, MAX_DIRECTORY_LENGTH, "%s\\%s", current, file->d_name); //파일 경로 생성
+            stat(file_path, file_status); // 파일 stat 읽기
             if(S_ISDIR(file_status->st_mode) && (strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0))
                 continue;
             if(S_ISDIR(file_status->st_mode))
-                Enqueue(&queue, path);
-            if(WildMatch(arg_file, file->d_name))
-                PrintDirItems(file->d_name, cwd, file_status, dir_info);
+                Enqueue(&queue, file_path);
+            if(WildMatch(arg_file, file->d_name)) {
+                if(!file_matched) {
+                    PrintCwd(dir_path);
+                    file_matched = true;
+                }
+                PrintDirItems(file->d_name, dir_path, file_status, dir_info);
+            }
         }
-
         free(current);
     }
 }

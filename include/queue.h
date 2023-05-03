@@ -31,13 +31,11 @@ bool Enqueue(Queue* q, char* data) {
         return false;
     }
     q->data[++q->rear] = strdup(data);
-    printf("\n%s Enqueued!!!!\n", data);
 }
 
 char* Dequeue(Queue* q) {
     if (IsEmpty(q)) {
         return NULL;
     }
-    printf("\nDequeued!!!!\n");
     return q->data[++q->front];
 }
