@@ -4,8 +4,8 @@
 #include <time.h>
 
 typedef struct DirectoryInfo {
-    char file_count;
-    char dir_count;
+    int file_count;
+    int dir_count;
     long total_file_size;
 } DirInfo;
 
